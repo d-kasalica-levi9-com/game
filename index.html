@@ -123,6 +123,9 @@ canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
   border: 2.5px solid var(--ink); border-radius: 10px; background: var(--board); color: var(--ink);
 }
 .namefield input:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.namefield input.need { border-color: var(--red); box-shadow: 0 0 0 4px color-mix(in srgb, var(--red) 25%, transparent); animation: nudge .35s; }
+@keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .namefield input.need { animation: none; } }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin: 0 0 14px; color: var(--ink-soft); font-size: 18px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend img { width: 26px; height: 26px; }
@@ -198,7 +201,7 @@ ol.lb .pts { font-family: "Kalam", cursive; font-weight: 700; color: var(--blue)
             <input id="playerName" type="text" maxlength="30" autocomplete="nickname" placeholder="npr. Darko"></label>
           <div class="cast" id="cast" role="group" aria-label="Izbor lika"></div>
           <div class="legend" id="legend"></div>
-          <div class="row"><button class="btn" id="play" disabled>Počni KT</button><button class="btn ghost" id="rulesBtn" type="button">Pravila igre</button></div>
+          <div class="row"><button class="btn" id="play" disabled>Izaberi lika</button><button class="btn ghost" id="rulesBtn" type="button">Pravila igre</button></div>
           <div class="keys">Strelice ← → ili A / D, na telefonu prevuci prstom. P je pauza.</div>
         </div>
 
@@ -425,6 +428,13 @@ function reset() {
 
 function start() {
   if (!chosen) return;
+  if (mode !== "claude" && !playerName()) {
+    const f = $("playerName");
+    $("over").hidden = true; $("start").hidden = false;
+    f.classList.remove("need"); void f.offsetWidth; f.classList.add("need");
+    f.focus();
+    return;
+  }
   $("start").hidden = true; $("over").hidden = true; $("paused").hidden = true;
   reset(); running = true; paused = false; over = false;
   say(chosen === "Bilja" ? "Imamo 3 sata. Krećemo!" : "OK, krećemo sa KT-om!", 2.2);
@@ -751,13 +761,13 @@ const playerName = () => $("playerName").value.trim().slice(0, 30);
 
 function updatePlay() {
   const needName = mode !== "claude";
-  const ok = !!chosen && (!needName || playerName().length > 0);
-  $("play").disabled = !ok;
-  $("play").textContent = chosen ? "Počni KT kao " + chosen : "Počni KT";
-  if (chosen && needName && !playerName()) $("play").textContent = "Upiši ime";
+  $("play").disabled = !chosen;
+  if (!chosen) $("play").textContent = "Izaberi lika";
+  else if (needName && !playerName()) $("play").textContent = "Upiši ime pa počni";
+  else $("play").textContent = "Počni KT kao " + chosen;
 }
 $("playerName").value = lsGet("kt3h-name") || "";
-$("playerName").addEventListener("input", () => { lsSet("kt3h-name", playerName()); updatePlay(); });
+$("playerName").addEventListener("input", () => { lsSet("kt3h-name", playerName()); $("playerName").classList.remove("need"); updatePlay(); });
 
 function localBest() { try { return JSON.parse(lsGet("kt3h-best") || "null"); } catch { return null; } }
 function setLocalBest(v) { lsSet("kt3h-best", JSON.stringify(v)); }
